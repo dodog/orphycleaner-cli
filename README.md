@@ -21,14 +21,15 @@ Do you find OrphyCleaner useful? Buy me a [coffee ☕](https://ko-fi.com/dodog)
 2. Make the script executable:
    ```bash
    chmod +x orphycleaner.sh
+   ```
 3. Run it from your home directory:
    ```bash
    ./orphycleaner.sh
+   ```
+    And follow on-screen prompts to review and clean orphaned config folders safely.
 
-And follow on-screen prompts to review and clean orphaned config folders safely.
-
-## Warning
-This script cannot guarantee that orphaned folders are truly unused. Please backup and verify before deleting to avoid losing important data.
+> [!WARNING]
+> This script cannot guarantee that orphaned folders are truly unused. Please backup and verify before deleting to avoid losing important data.
 
 ## Customization
 Update the ignored_folders array in the script to exclude additional folders.
