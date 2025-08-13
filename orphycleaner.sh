@@ -31,6 +31,14 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ##
 
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+NC='\033[0m' # No Color
+
 declare -A results
 
 normalize() {
@@ -46,7 +54,6 @@ declare -A alias_map=(
   [".mozilla"]="mozilla"
 )
 
-# Expanded ignored folders
 ignored_folders=(
   "$HOME/.local/share/applications"
   "$HOME/.local/share/backgrounds"
@@ -71,14 +78,14 @@ is_ignored_folder() {
   return 1
 }
 
-# Get all installed pacman packages (official + AUR)
+# Installed pacman packages
 mapfile -t installed_pkgs < <(pacman -Qq)
 installed_pkgs_normalized=()
 for pkg in "${installed_pkgs[@]}"; do
   installed_pkgs_normalized+=( "$(normalize "$pkg")" )
 done
 
-# Get installed Flatpak apps
+# Flatpak
 if command -v flatpak >/dev/null 2>&1; then
   mapfile -t installed_flatpaks < <(flatpak list --app --columns=application)
   installed_flatpaks_normalized=()
@@ -89,7 +96,7 @@ else
   installed_flatpaks_normalized=()
 fi
 
-# Get installed .desktop apps (system-wide only)
+# Desktop files
 desktop_dir="/usr/share/applications"
 desktop_apps_normalized=()
 if [ -d "$desktop_dir" ]; then
@@ -99,13 +106,13 @@ if [ -d "$desktop_dir" ]; then
   done < <(find "$desktop_dir" -maxdepth 1 -type f -name "*.desktop" -print0)
 fi
 
-# Get installed AppImages in ~/Applications/
+# AppImages
 appimage_dir="$HOME/Applications"
 appimages_normalized=()
 if [ -d "$appimage_dir" ]; then
   while IFS= read -r -d '' appimage_file; do
     base=$(basename "$appimage_file")
-    base="${base%.*}"  # strip extension
+    base="${base%.*}"
     appimages_normalized+=( "$(normalize "$base")" )
   done < <(find "$appimage_dir" -maxdepth 1 -type f \( -iname '*.AppImage' -o -iname '*.appimage' \) -print0)
 fi
@@ -161,7 +168,7 @@ check_folder() {
   results["Orphaned"]+="$folder\n"
 }
 
-echo "Scanning folders, please wait..."
+echo -e "${CYAN}Scanning folders, please wait...${NC}"
 counter=0
 
 scan_folders() {
@@ -171,7 +178,7 @@ scan_folders() {
       continue
     fi
     ((counter++))
-    echo -ne "Processing folder #$counter: $folder\r"
+    echo -ne "${YELLOW}Processing folder #$counter:${NC} $folder\r"
     check_folder "$folder"
   done
 }
@@ -190,49 +197,48 @@ for folder in ~/.*; do
 done
 scan_folders "${hidden_folders[@]}"
 
-echo -e "\n===== RESULTS ====="
+echo -e "\n${BOLD}===== RESULTS =====${NC}"
 for label in "Installed (package match)" "Installed (executable found)" "Installed (Flatpak)" "Installed (desktop file match)" "Installed (AppImage)" "Maybe Installed (partial package name match)" "Orphaned"; do
   echo
-  echo "== $label =="
+  echo -e "${BOLD}== $label ==${NC}"
   if [[ -n "${results[$label]}" ]]; then
     echo -e "${results[$label]}" | sort
   else
-    echo "None found."
+    echo -e "${GREEN}None found.${NC}"
   fi
 done
 
 # Interactive cleanup
 if [[ -n "${results["Orphaned"]}" ]]; then
-  echo -e "\nInteractive cleanup of orphaned folders."
-  echo "You can choose to [K]eep, [D]elete, [S]kip, or [Q]uit."
+  echo -e "\n${CYAN}Interactive cleanup of orphaned folders.${NC}"
+  echo -e "You can choose to ${GREEN}[K]eep${NC}, ${RED}[D]elete${NC}, ${YELLOW}[S]kip${NC}, or ${BOLD}[Q]uit${NC}."
 
-  # FIX: correctly split into array, one folder per element
   mapfile -t orphaned_folders <<< "$(printf '%b' "${results["Orphaned"]}")"
 
   for folder in "${orphaned_folders[@]}"; do
     [[ -z "$folder" ]] && continue
     while true; do
-      read -rp "Action for: $folder [K/D/S/Q]: " action
+      read -rp "$(echo -e "${BOLD}Action for:${NC} $folder [${GREEN}K${NC}/${RED}D${NC}/${YELLOW}S${NC}/${CYAN}Q${NC}]: ")" action
       case "$action" in
         [Kk])
-          echo "Keeping $folder."
+          echo -e "${GREEN}Keeping${NC} $folder."
           break
           ;;
         [Dd])
           rm -rf -- "$folder"
-          echo "Deleted $folder."
+          echo -e "${RED}Deleted${NC} $folder."
           break
           ;;
         [Ss])
-          echo "Skipped $folder."
+          echo -e "${YELLOW}Skipped${NC} $folder."
           break
           ;;
         [Qq])
-          echo "Quitting."
+          echo -e "${CYAN}Quitting.${NC}"
           exit 0
           ;;
         *)
-          echo "Invalid option. Please choose K, D, S, or Q."
+          echo -e "${RED}Invalid option.${NC} Please choose K, D, S, or Q."
           ;;
       esac
     done
