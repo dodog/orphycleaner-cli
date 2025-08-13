@@ -1,12 +1,22 @@
 #!/bin/bash
 ##
 #     Project: OrphyCleaner - Orphaned Config Folder Cleaner
-# Description: MScans your home directory for orphaned config folders
+# Description: Scans your home directory for orphaned config folders
 #      Author: Jozef Gaal (dodog) <preklady@mayday.sk>
 #   Copyright: 2025 Jozef Gaal
 #     License: GPL-3+
 #         Web: https://github.com/dodog/orphycleaner
-
+#
+# Scans your home directory for config folders that may belong to uninstalled or unused applications.
+# Matches against installed packages (pacman), Flatpak apps, desktop files, AppImages, and executables.
+# Categorizes folders as Installed, Maybe Installed, or Orphaned.
+#
+# WARNING: Not 100% guaranteed — backup and verify before deleting folders.
+#
+# Usage:
+#   chmod +x check_config_orphans.sh
+#   ./check_config_orphans.sh
+#
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation, either version 3 of the License, or
@@ -34,7 +44,6 @@ declare -A alias_map=(
   ["Code - OSS"]="code-oss"
   [".eID_klient"]="eidklient"
   [".mozilla"]="mozilla"
-  # Add more aliases here as needed
 )
 
 # Expanded ignored folders
@@ -105,27 +114,22 @@ check_folder() {
   folder=$1
   base=$(basename "$folder")
 
-  # Use alias if exists
   if [[ -n "${alias_map[$base]}" ]]; then
     name="${alias_map[$base]}"
   else
-    # else normalize folder name after removing leading dot if any
     raw_name=$(echo "$base" | sed 's/^\.//')
     name=$(normalize "$raw_name")
   fi
 
-  # Package exact match
   for pkg in "${installed_pkgs_normalized[@]}"; do
     [[ "$pkg" == "$name" ]] && { results["Installed (package match)"]+="$folder\n"; return; }
   done
 
-  # Executable in PATH (by normalized config folder name or alias)
   if command -v "$name" >/dev/null 2>&1; then
     results["Installed (executable found)"]+="$folder\n"
     return
   fi
 
-  # Partial package name match
   for pkg in "${installed_pkgs_normalized[@]}"; do
     if [[ "$pkg" == *"$name"* ]]; then
       results["Maybe Installed (partial package name match)"]+="$folder\n"
@@ -133,7 +137,6 @@ check_folder() {
     fi
   done
 
-  # Flatpak app match
   for app in "${installed_flatpaks_normalized[@]}"; do
     if [[ "$app" == *"$name"* ]]; then
       results["Installed (Flatpak)"]+="$folder\n"
@@ -141,7 +144,6 @@ check_folder() {
     fi
   done
 
-  # Desktop file match
   for desktop_app in "${desktop_apps_normalized[@]}"; do
     if [[ "$desktop_app" == *"$name"* ]]; then
       results["Installed (desktop file match)"]+="$folder\n"
@@ -149,7 +151,6 @@ check_folder() {
     fi
   done
 
-  # AppImage match
   for appimage in "${appimages_normalized[@]}"; do
     if [[ "$appimage" == *"$name"* ]]; then
       results["Installed (AppImage)"]+="$folder\n"
@@ -157,12 +158,10 @@ check_folder() {
     fi
   done
 
-  # Otherwise orphaned
   results["Orphaned"]+="$folder\n"
 }
 
 echo "Scanning folders, please wait..."
-
 counter=0
 
 scan_folders() {
@@ -177,13 +176,8 @@ scan_folders() {
   done
 }
 
-# Scan ~/.config
-scan_folders ~/.config/*
+scan_folders ~/.config/* ~/.local/share/*
 
-# Scan ~/.local/share
-scan_folders ~/.local/share/*
-
-# Scan hidden folders directly under home (~), except .config and .local which are scanned already
 hidden_folders=()
 for folder in ~/.*; do
   base=$(basename "$folder")
@@ -196,8 +190,7 @@ for folder in ~/.*; do
 done
 scan_folders "${hidden_folders[@]}"
 
-echo -e "\n"
-echo "===== RESULTS ====="
+echo -e "\n===== RESULTS ====="
 for label in "Installed (package match)" "Installed (executable found)" "Installed (Flatpak)" "Installed (desktop file match)" "Installed (AppImage)" "Maybe Installed (partial package name match)" "Orphaned"; do
   echo
   echo "== $label =="
@@ -207,3 +200,41 @@ for label in "Installed (package match)" "Installed (executable found)" "Install
     echo "None found."
   fi
 done
+
+# Interactive cleanup
+if [[ -n "${results["Orphaned"]}" ]]; then
+  echo -e "\nInteractive cleanup of orphaned folders."
+  echo "You can choose to [K]eep, [D]elete, [S]kip, or [Q]uit."
+
+  # FIX: correctly split into array, one folder per element
+  mapfile -t orphaned_folders <<< "$(printf '%b' "${results["Orphaned"]}")"
+
+  for folder in "${orphaned_folders[@]}"; do
+    [[ -z "$folder" ]] && continue
+    while true; do
+      read -rp "Action for: $folder [K/D/S/Q]: " action
+      case "$action" in
+        [Kk])
+          echo "Keeping $folder."
+          break
+          ;;
+        [Dd])
+          rm -rf -- "$folder"
+          echo "Deleted $folder."
+          break
+          ;;
+        [Ss])
+          echo "Skipped $folder."
+          break
+          ;;
+        [Qq])
+          echo "Quitting."
+          exit 0
+          ;;
+        *)
+          echo "Invalid option. Please choose K, D, S, or Q."
+          ;;
+      esac
+    done
+  done
+fi
