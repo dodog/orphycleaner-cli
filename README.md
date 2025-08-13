@@ -37,6 +37,7 @@ Add folder-to-app name aliases in the alias_map section.
 
 ## Requirements
 Manjaro or Arch Linux with pacman (or adapt package check for your distro).
+
 Optional: Flatpak and AppImage support if you use those package formats.
 
 ## License
