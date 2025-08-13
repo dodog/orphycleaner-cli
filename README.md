@@ -41,5 +41,3 @@ Add folder-to-app name aliases in the alias_map section.
 
 Optional: Flatpak and AppImage support if you use those package formats.
 
-## License
-Free to use and modify.
