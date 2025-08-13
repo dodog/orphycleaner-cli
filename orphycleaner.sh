@@ -31,7 +31,9 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ##
 
-# Colors
+# =========================
+# COLORS
+# =========================
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -45,7 +47,7 @@ normalize() {
   echo "$1" | tr '[:upper:]' '[:lower:]' | tr ' _.-' '-'
 }
 
-# Alias map
+# Alias map: folder basename → known app name (normalized)
 declare -A alias_map=(
   [".audacity-data"]="audacity"
   [".SynologyDrive"]="synology-drive"
@@ -54,7 +56,7 @@ declare -A alias_map=(
   [".mozilla"]="mozilla"
 )
 
-# Ignored folders
+# Expanded ignored folders
 ignored_folders=(
   "$HOME/.local/share/applications"
   "$HOME/.local/share/backgrounds"
@@ -66,6 +68,7 @@ ignored_folders=(
   "$HOME/.thumbnails"
   "$HOME/.npm"
   "$HOME/.config/pulse"
+  "$HOME/.config/autostart"   # added
   "$HOME/.local/share/flatpak/runtime"
 )
 
@@ -79,14 +82,19 @@ is_ignored_folder() {
   return 1
 }
 
-# Installed pacman packages
+# =========================
+# START MESSAGE + DATA GATHERING
+# =========================
+echo -e "${BOLD}Script started.${NC} Gathering package and application information..."
+
+# Get all installed pacman packages (official + AUR)
 mapfile -t installed_pkgs < <(pacman -Qq)
 installed_pkgs_normalized=()
 for pkg in "${installed_pkgs[@]}"; do
   installed_pkgs_normalized+=( "$(normalize "$pkg")" )
 done
 
-# Flatpak
+# Get installed Flatpak apps
 if command -v flatpak >/dev/null 2>&1; then
   mapfile -t installed_flatpaks < <(flatpak list --app --columns=application)
   installed_flatpaks_normalized=()
@@ -97,7 +105,7 @@ else
   installed_flatpaks_normalized=()
 fi
 
-# Desktop files
+# Get installed .desktop apps (system-wide only)
 desktop_dir="/usr/share/applications"
 desktop_apps_normalized=()
 if [ -d "$desktop_dir" ]; then
@@ -107,13 +115,13 @@ if [ -d "$desktop_dir" ]; then
   done < <(find "$desktop_dir" -maxdepth 1 -type f -name "*.desktop" -print0)
 fi
 
-# AppImages
+# Get installed AppImages in ~/Applications/
 appimage_dir="$HOME/Applications"
 appimages_normalized=()
 if [ -d "$appimage_dir" ]; then
   while IFS= read -r -d '' appimage_file; do
     base=$(basename "$appimage_file")
-    base="${base%.*}"
+    base="${base%.*}"  # strip extension
     appimages_normalized+=( "$(normalize "$base")" )
   done < <(find "$appimage_dir" -maxdepth 1 -type f \( -iname '*.AppImage' -o -iname '*.appimage' \) -print0)
 fi
@@ -122,6 +130,7 @@ check_folder() {
   folder=$1
   base=$(basename "$folder")
 
+  # Use alias if exists
   if [[ -n "${alias_map[$base]}" ]]; then
     name="${alias_map[$base]}"
   else
@@ -129,15 +138,18 @@ check_folder() {
     name=$(normalize "$raw_name")
   fi
 
+  # Package exact match
   for pkg in "${installed_pkgs_normalized[@]}"; do
     [[ "$pkg" == "$name" ]] && { results["Installed (package match)"]+="$folder\n"; return; }
   done
 
+  # Executable in PATH (by normalized config folder name or alias)
   if command -v "$name" >/dev/null 2>&1; then
     results["Installed (executable found)"]+="$folder\n"
     return
   fi
 
+  # Partial package name match
   for pkg in "${installed_pkgs_normalized[@]}"; do
     if [[ "$pkg" == *"$name"* ]]; then
       results["Maybe Installed (partial package name match)"]+="$folder\n"
@@ -145,6 +157,7 @@ check_folder() {
     fi
   done
 
+  # Flatpak app match
   for app in "${installed_flatpaks_normalized[@]}"; do
     if [[ "$app" == *"$name"* ]]; then
       results["Installed (Flatpak)"]+="$folder\n"
@@ -152,6 +165,7 @@ check_folder() {
     fi
   done
 
+  # Desktop file match
   for desktop_app in "${desktop_apps_normalized[@]}"; do
     if [[ "$desktop_app" == *"$name"* ]]; then
       results["Installed (desktop file match)"]+="$folder\n"
@@ -159,6 +173,7 @@ check_folder() {
     fi
   done
 
+  # AppImage match
   for appimage in "${appimages_normalized[@]}"; do
     if [[ "$appimage" == *"$name"* ]]; then
       results["Installed (AppImage)"]+="$folder\n"
@@ -166,6 +181,7 @@ check_folder() {
     fi
   done
 
+  # Otherwise orphaned
   results["Orphaned"]+="$folder\n"
 }
 
@@ -184,8 +200,10 @@ scan_folders() {
   done
 }
 
+# Scan ~/.config and ~/.local/share
 scan_folders ~/.config/* ~/.local/share/*
 
+# Scan hidden folders directly under home (~), except .config and .local
 hidden_folders=()
 for folder in ~/.*; do
   base=$(basename "$folder")
@@ -209,14 +227,18 @@ for label in "Installed (package match)" "Installed (executable found)" "Install
   fi
 done
 
-# Show summary counts before interaction
+# Summary counts BEFORE interactive
 echo -e "\n${BOLD}===== SUMMARY COUNTS =====${NC}"
 for label in "Installed (package match)" "Installed (executable found)" "Installed (Flatpak)" "Installed (desktop file match)" "Installed (AppImage)" "Maybe Installed (partial package name match)" "Orphaned"; do
   count=$(echo -e "${results[$label]}" | grep -v '^\s*$' | wc -l)
   echo -e "${BOLD}$label:${NC} $count"
 done
 
-# Interactive cleanup
+# Safety warning
+echo -e "\n${RED}${BOLD}WARNING:${NC} This script cannot be 100% certain that 'Orphaned' folders are truly unused."
+echo -e "Before deleting anything, double-check to make sure you are not removing something important."
+
+# Interactive cleanup (WORKING version: uses an array; stdin is not consumed)
 if [[ -n "${results["Orphaned"]}" ]]; then
   echo -e "\n${BLUE}Interactive cleanup of orphaned folders.${NC}"
   echo -e "You can choose to ${GREEN}[K]eep${NC}, ${RED}[D]elete${NC}, ${YELLOW}[S]kip${NC}, or ${BLUE}[Q]uit${NC}."
@@ -261,4 +283,6 @@ if [[ -n "${results["Orphaned"]}" ]]; then
   done
 
   echo -e "\n${BOLD}Summary:${NC} ${GREEN}$kept_count kept${NC}, ${RED}$deleted_count deleted${NC}, ${YELLOW}$skipped_count skipped${NC}."
+else
+  echo -e "\n${GREEN}No orphaned folders found for cleanup.${NC}"
 fi
