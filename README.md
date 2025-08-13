@@ -4,6 +4,8 @@
 
 This script scans your home directory for configuration folders that may be "orphaned" — meaning they belong to applications that are no longer installed or in use. It helps you identify and clean up these leftover folders to keep your system tidy.
 
+Do you find OrphyCleaner useful? Buy me a [coffee ☕](https://ko-fi.com/dodog)
+
 ## Features
 
 - Scans common config locations: `~/.config`, `~/.local/share`, and other hidden folders under your home.
