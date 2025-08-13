@@ -1,14 +1,41 @@
-# Clean Config Orphans
-A simple script to remove configuration files from uninstalled applications in the user's home folder.
+# OrphyCleaner - Orphaned Config Folder Cleaner
 
-**What it does:**
+## Overview
 
-* Prints each folder path with one of these labels:
+This script scans your home directory for configuration folders that may be "orphaned" — meaning they belong to applications that are no longer installed or in use. It helps you identify and clean up these leftover folders to keep your system tidy.
 
-* Installed (package match) — folder name matches an installed package exactly
+## Features
 
-*  Installed (executable found) — executable with the same name is in your PATH.
+- Scans common config locations: `~/.config`, `~/.local/share`, and other hidden folders under your home.
+- Matches folders against installed packages (`pacman`), Flatpak apps, `.desktop` applications, AppImages, and executables in your PATH.
+- Categorizes folders as Installed, Maybe Installed, or Orphaned.
+- Shows a summary count of folders in each category.
+- Provides an interactive cleanup interface for orphaned folders with options to Keep, Delete, Skip, or Quit.
+- Includes default ignored folders like cache, trash, and other system-related directories.
+- Customizable alias mappings for special folder names.
 
-* Maybe Installed (partial package name match) — folder name partially found inside package names.
+## Usage
+1. Download the script to your home directory
+2. Make the script executable:
+   ```bash
+   chmod +x orphycleaner.sh
+3. Run it from your home directory:
+   ```bash
+   ./orphycleaner.sh
 
-*  Orphaned — likely no installed package or executable linked to this folder.
+And follow on-screen prompts to review and clean orphaned config folders safely.
+
+## Warning
+This script cannot guarantee that orphaned folders are truly unused. Please backup and verify before deleting to avoid losing important data.
+
+## Customization
+Update the ignored_folders array in the script to exclude additional folders.
+
+Add folder-to-app name aliases in the alias_map section.
+
+## Requirements
+Manjaro or Arch Linux with pacman (or adapt package check for your distro).
+Optional: Flatpak and AppImage support if you use those package formats.
+
+## License
+Free to use and modify.
