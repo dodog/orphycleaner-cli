@@ -35,7 +35,7 @@
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
+BLUE='\033[0;34m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
@@ -45,7 +45,7 @@ normalize() {
   echo "$1" | tr '[:upper:]' '[:lower:]' | tr ' _.-' '-'
 }
 
-# Alias map: folder basename → known app name (normalized)
+# Alias map
 declare -A alias_map=(
   [".audacity-data"]="audacity"
   [".SynologyDrive"]="synology-drive"
@@ -54,6 +54,7 @@ declare -A alias_map=(
   [".mozilla"]="mozilla"
 )
 
+# Ignored folders
 ignored_folders=(
   "$HOME/.local/share/applications"
   "$HOME/.local/share/backgrounds"
@@ -168,7 +169,7 @@ check_folder() {
   results["Orphaned"]+="$folder\n"
 }
 
-echo -e "${CYAN}Scanning folders, please wait...${NC}"
+echo -e "${BLUE}Scanning folders, please wait...${NC}"
 counter=0
 
 scan_folders() {
@@ -208,33 +209,48 @@ for label in "Installed (package match)" "Installed (executable found)" "Install
   fi
 done
 
+# Show summary counts before interaction
+echo -e "\n${BOLD}===== SUMMARY COUNTS =====${NC}"
+for label in "Installed (package match)" "Installed (executable found)" "Installed (Flatpak)" "Installed (desktop file match)" "Installed (AppImage)" "Maybe Installed (partial package name match)" "Orphaned"; do
+  count=$(echo -e "${results[$label]}" | grep -v '^\s*$' | wc -l)
+  echo -e "${BOLD}$label:${NC} $count"
+done
+
 # Interactive cleanup
 if [[ -n "${results["Orphaned"]}" ]]; then
-  echo -e "\n${CYAN}Interactive cleanup of orphaned folders.${NC}"
-  echo -e "You can choose to ${GREEN}[K]eep${NC}, ${RED}[D]elete${NC}, ${YELLOW}[S]kip${NC}, or ${BOLD}[Q]uit${NC}."
+  echo -e "\n${BLUE}Interactive cleanup of orphaned folders.${NC}"
+  echo -e "You can choose to ${GREEN}[K]eep${NC}, ${RED}[D]elete${NC}, ${YELLOW}[S]kip${NC}, or ${BLUE}[Q]uit${NC}."
 
   mapfile -t orphaned_folders <<< "$(printf '%b' "${results["Orphaned"]}")"
+
+  kept_count=0
+  deleted_count=0
+  skipped_count=0
 
   for folder in "${orphaned_folders[@]}"; do
     [[ -z "$folder" ]] && continue
     while true; do
-      read -rp "$(echo -e "${BOLD}Action for:${NC} $folder [${GREEN}K${NC}/${RED}D${NC}/${YELLOW}S${NC}/${CYAN}Q${NC}]: ")" action
+      read -rp "$(echo -e "${BOLD}Action for:${NC} $folder [${GREEN}K${NC}/${RED}D${NC}/${YELLOW}S${NC}/${BLUE}Q${NC}]: ")" action
       case "$action" in
         [Kk])
           echo -e "${GREEN}Keeping${NC} $folder."
+          ((kept_count++))
           break
           ;;
         [Dd])
           rm -rf -- "$folder"
           echo -e "${RED}Deleted${NC} $folder."
+          ((deleted_count++))
           break
           ;;
         [Ss])
           echo -e "${YELLOW}Skipped${NC} $folder."
+          ((skipped_count++))
           break
           ;;
         [Qq])
-          echo -e "${CYAN}Quitting.${NC}"
+          echo -e "${BLUE}Quitting.${NC}"
+          echo -e "\n${BOLD}Summary:${NC} ${GREEN}$kept_count kept${NC}, ${RED}$deleted_count deleted${NC}, ${YELLOW}$skipped_count skipped${NC}."
           exit 0
           ;;
         *)
@@ -243,4 +259,6 @@ if [[ -n "${results["Orphaned"]}" ]]; then
       esac
     done
   done
+
+  echo -e "\n${BOLD}Summary:${NC} ${GREEN}$kept_count kept${NC}, ${RED}$deleted_count deleted${NC}, ${YELLOW}$skipped_count skipped${NC}."
 fi
