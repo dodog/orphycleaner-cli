@@ -14,8 +14,8 @@
 # WARNING: Not 100% guaranteed — backup and verify before deleting folders.
 #
 # Usage:
-#   chmod +x check_config_orphans.sh
-#   ./check_config_orphans.sh
+#   chmod +x orphycleaner.sh
+#   ./orphycleaner.sh
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
