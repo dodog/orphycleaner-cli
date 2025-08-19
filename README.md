@@ -1,7 +1,7 @@
-# OrphyCleaner - Orphaned Config Folder Cleaner
+# OrphyCleaner CLI - Orphaned Config Folder Cleaner
 
-## [For enhanced OrphyCleaner GUI version visit](https://github.com/dodog/orphycleaner-gui)
- [https://github.com/dodog/orphycleaner-gui](https://github.com/dodog/orphycleaner-gui)
+## [For enhanced OrphyCleaner GUI version visit](https://github.com/dodog/orphycleaner)
+ [https://github.com/dodog/orphycleaner](https://github.com/dodog/orphycleaner)
 
 ## Overview
 
