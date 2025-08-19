@@ -1,5 +1,8 @@
 # OrphyCleaner - Orphaned Config Folder Cleaner
 
+## [For enhanced OrphyCleaner GUI version visit](https://github.com/dodog/orphycleaner-gui)
+ [https://github.com/dodog/orphycleaner-gui](https://github.com/dodog/orphycleaner-gui)
+
 ## Overview
 
 This script scans your home directory for configuration folders that may be "orphaned" — meaning they belong to applications that are no longer installed or in use. It helps you identify and clean up these leftover folders to keep your system tidy.
